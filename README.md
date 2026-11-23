@@ -1,25 +1,48 @@
-# SignalRadar
+# SignalRadar (Android)
 
-Android aplikace pro vyhledávání okolních Bluetooth (BLE) a Wi-Fi zařízení, sledování síly signálu v dBm a orientační odhad vzdálenosti v metrech.
+![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?logo=android&logoColor=white)
+![Language](https://img.shields.io/badge/Language-Kotlin-7F52FF?logo=kotlin&logoColor=white)
+![UI](https://img.shields.io/badge/UI-Jetpack%20Compose%20%2F%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)
+![Release](https://img.shields.io/github/v/release/hubkalukas/SignalRadar-Android?label=Release)
 
-## Co umí
+Android aplikace pro vyhledávání okolních **Bluetooth (BLE)** a **Wi-Fi** zařízení, sledování síly signálu v dBm a orientační odhad vzdálenosti v metrech.
 
-Aplikace skenuje Bluetooth Low Energy v režimu `SCAN_MODE_LOW_LATENCY` bez zpoždění reportů a zároveň průběžně načítá výsledky Wi-Fi v pásmech 2.4, 5 a 6 GHz. U známých zařízení zkouší doplnit výrobce podle BLE Company ID nebo OUI prefixu MAC adresy.
+> **English summary:** Android (Kotlin + Jetpack Compose) Bluetooth Low Energy & Wi-Fi (2.4 / 5 / 6 GHz) signal scanner featuring a live radar view, 1D Kalman-filtered RSSI distance estimation, vendor lookup (BLE Company ID / MAC OUI), and proximity vibration feedback.
 
-Hlavní obrazovka jde přepínat mezi přehledem (radar a seznam pod sebou), samotným radarem a samotným seznamem. V seznamu se dá vyhledávat podle názvu, výrobce i MAC adresy nebo filtrovat podle typu signálu.
+---
 
-Po klepnutí na konkrétní zařízení se otevře detail s měřákem signálu, odhadem vzdálenosti v metrech a grafem průběhu RSSI. Výpočet používá 1D Kalmanův filtr a log-distance model, kde se dá přepnout prostředí (venku, interiér, přes zdi). Při hledání zařízení v ruce jde zapnout vibrační odezva, která zrychluje s rostoucí silou signálu.
+## ⬇️ Stažení aplikace
 
-## Instalace
+- **[Stáhnout SignalRadar-v1.0.apk](https://github.com/hubkalukas/SignalRadar-Android/releases/latest/download/SignalRadar-v1.0.apk)** (přímé stažení nejnovější verze)
+- Všechny verze najdeš v sekci [Releases](https://github.com/hubkalukas/SignalRadar-Android/releases).
 
-Hotové APK (`SignalRadar-v1.0.apk`) je v sekci [Releases](../../releases). Funguje od Androidu 8.0 (API 26) výš. Pro reálné skenování je potřeba povolit přístup k okolním zařízením a poloze.
+Vyžaduje **Android 8.0 (API 26)** nebo novější. Pro reálné skenování je potřeba povolit přístup k okolním zařízením a poloze.
 
-## Build
+---
 
-Vyžaduje JDK 17 nebo 21 a Android SDK (platforma 36.1):
+## Co aplikace umí
+
+- **Skenování BLE & Wi-Fi v reálném čase:** Bluetooth Low Energy běží v režimu `SCAN_MODE_LOW_LATENCY` bez zpoždění reportů, Wi-Fi skenuje pásma **2.4, 5 i 6 GHz**.
+- **Rozpoznání výrobce:** U známých zařízení automaticky doplňuje výrobce podle BLE Company ID nebo OUI prefixu MAC adresy.
+- **Tři režimy zobrazení:** Přehled (radar a seznam pod sebou), samostatný radar a samostatný seznam s vyhledáváním (název, výrobce, MAC) i filtrováním podle typu signálu.
+- **Detail a odhad vzdálenosti:** Měřák signálu, živý graf průběhu RSSI a přepočet na metry pomocí **1D Kalmanova filtru** a log-distance modelu s volbou prostředí (*venku / interiér / přes zdi*).
+- **Haptické hledání:** Při dohledávání zařízení v ruce lze zapnout vibrační odezvu, která zrychluje s rostoucí silou signálu.
+
+---
+
+## Technologie a architektura
+
+- **Kotlin** + **Jetpack Compose** (Material 3, Navigation 3)
+- `SignalScannerEngine.kt` — BLE a Wi-Fi skenování
+- `SignalMath.kt` (+ unit testy v `SignalMathTest.kt`) — 1D Kalmanův filtr a výpočet vzdálenosti z RSSI
+- `RadarCanvas.kt` & `TargetLockSheet.kt` — vykreslení radaru a detail zaměřeného zařízení
+
+## Sestavení ze zdrojového kódu
+
+Vyžaduje **JDK 17** (nebo 21) a **Android SDK (platforma 36.1)**:
 
 ```bash
 ./gradlew assembleDebug testDebugUnitTest
 ```
 
-APK se uloží do `app/build/outputs/apk/debug/app-debug.apk`.
+Výsledné APK se uloží do `app/build/outputs/apk/debug/app-debug.apk`.
