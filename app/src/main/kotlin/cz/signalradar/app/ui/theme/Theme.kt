@@ -5,19 +5,19 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 private val SignalRadarColorScheme = darkColorScheme(
-    primary = CyanElectric,
-    onPrimary = ObsidianBg,
-    secondary = EmeraldPulse,
-    onSecondary = ObsidianBg,
-    tertiary = AmberSignal,
-    background = ObsidianBg,
-    onBackground = TextPrimary,
-    surface = CardSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = CardSurfaceElevated,
-    onSurfaceVariant = TextSecondary,
-    outline = CardBorder,
-    error = CoralWeak
+    primary = AccentBlue,
+    onPrimary = BgPrimary,
+    secondary = AccentGreen,
+    onSecondary = BgPrimary,
+    tertiary = AccentAmber,
+    background = BgPrimary,
+    onBackground = InkPrimary,
+    surface = BgElevated,
+    onSurface = InkPrimary,
+    surfaceVariant = BgSurface,
+    onSurfaceVariant = InkSecondary,
+    outline = Hairline,
+    error = AccentRed
 )
 
 @Composable

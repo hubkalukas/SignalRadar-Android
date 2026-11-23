@@ -25,8 +25,8 @@ import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,23 +45,19 @@ import androidx.compose.ui.unit.sp
 import cz.signalradar.app.model.DetectedDevice
 import cz.signalradar.app.model.EnvironmentProfile
 import cz.signalradar.app.model.SignalType
-import cz.signalradar.app.ui.theme.CardBorder
-import cz.signalradar.app.ui.theme.CardSurface
-import cz.signalradar.app.ui.theme.CardSurfaceElevated
-import cz.signalradar.app.ui.theme.CyanElectric
-import cz.signalradar.app.ui.theme.DeepSlate
-import cz.signalradar.app.ui.theme.EmeraldPulse
-import cz.signalradar.app.ui.theme.TextMuted
-import cz.signalradar.app.ui.theme.TextPrimary
-import cz.signalradar.app.ui.theme.TextSecondary
+import cz.signalradar.app.ui.theme.AccentBlue
+import cz.signalradar.app.ui.theme.AccentGreen
+import cz.signalradar.app.ui.theme.BgControl
+import cz.signalradar.app.ui.theme.BgElevated
+import cz.signalradar.app.ui.theme.BgSurface
+import cz.signalradar.app.ui.theme.Hairline
+import cz.signalradar.app.ui.theme.InkPrimary
+import cz.signalradar.app.ui.theme.InkSecondary
+import cz.signalradar.app.ui.theme.InkTertiary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
 
-/**
- * Handheld Lock-On tracker panel ("v ruce") with large analog-digital meter,
- * live oscilloscope, environment calibration, and optional Geiger proximity haptics.
- */
 @Composable
 fun TargetLockPanel(
     device: DetectedDevice,
@@ -72,11 +68,10 @@ fun TargetLockPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accent = if (device.type == SignalType.BLE) CyanElectric else EmeraldPulse
+    val accent = if (device.type == SignalType.BLE) AccentBlue else AccentGreen
     val context = LocalContext.current
     val latestQuality by rememberUpdatedState(device.signalQuality)
 
-    // Optional Geiger-style tactile pulse: faster & crisper as you walk closer
     LaunchedEffect(hapticsEnabled, device.id) {
         if (!hapticsEnabled) return@LaunchedEffect
         val vibrator = getVibrator(context) ?: return@LaunchedEffect
@@ -88,7 +83,7 @@ fun TargetLockPanel(
             try {
                 vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
             } catch (_: Throwable) {
-                // Ignore on emulators without vibrator hardware
+                // Emulator without vibrator
             }
             delay(intervalMs)
         }
@@ -98,41 +93,52 @@ fun TargetLockPanel(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(DeepSlate)
+            .background(BgElevated)
             .border(
-                width = 1.dp,
-                color = accent.copy(alpha = 0.45f),
+                width = 0.5.dp,
+                color = Hairline,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
             )
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Header row
+        // Sheet grab handle
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .width(36.dp)
+                .height(4.dp)
+                .clip(CircleShape)
+                .background(Hairline)
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        // Device header
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
-                    .background(accent.copy(alpha = 0.14f))
-                    .border(1.dp, accent.copy(alpha = 0.45f), CircleShape),
+                    .background(accent.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (device.type == SignalType.BLE) Icons.Rounded.Bluetooth else Icons.Rounded.Wifi,
                     contentDescription = device.type.label,
                     tint = accent,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = device.displayName,
-                    color = TextPrimary,
+                    color = InkPrimary,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -142,25 +148,32 @@ fun TargetLockPanel(
                         if (!device.vendor.isNullOrBlank()) append(" · ${device.vendor}")
                         append(" · ${device.id}")
                     },
-                    color = TextSecondary,
-                    fontSize = 11.sp,
+                    color = InkSecondary,
+                    fontSize = 11.5.sp,
                     fontFamily = FontFamily.Monospace,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = onDismiss) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(BgControl)
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = "Zavřít zaměření",
-                    tint = TextSecondary
+                    contentDescription = "Zavřít",
+                    tint = InkSecondary,
+                    modifier = Modifier.size(17.dp)
                 )
             }
         }
 
         Spacer(Modifier.height(10.dp))
 
-        // Central analog-digital distance & RSSI gauge
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -170,92 +183,72 @@ fun TargetLockPanel(
                 rssi = device.filteredRssi,
                 qualityPercent = device.signalQuality,
                 proximityLabel = device.proximityBand.label,
-                accentColor = accent,
-                sizeDp = 210.dp
+                sizeDp = 208.dp
             )
         }
 
-        // Live telemetry mini-cards
+        // Clean single-row metrics separated by subtle dividers
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MetricMiniTile(
-                label = "SUROVÝ RSSI",
-                value = "${device.rawRssi} dBm",
-                modifier = Modifier.weight(1f)
-            )
-            MetricMiniTile(
-                label = "KADENCE",
-                value = String.format("%.1f pkt/s", device.packetsPerSecond),
-                modifier = Modifier.weight(1f)
-            )
-            MetricMiniTile(
-                label = "PAKETŮ",
-                value = "${device.packetCount}",
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Live oscilloscope container
-        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardSurface)
-                .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
-                .padding(12.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(BgSurface)
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "ŽIVÝ PRŮBĚH SIGNÁLU",
-                    color = TextMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                val minVal = device.history.minOrNull()?.roundToInt() ?: device.rawRssi
-                val maxVal = device.history.maxOrNull()?.roundToInt() ?: device.rawRssi
-                Text(
-                    text = "MIN $minVal / MAX $maxVal dBm",
-                    color = TextSecondary,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            LiveOscilloscope(
-                samples = device.history,
-                accentColor = accent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(92.dp)
-            )
+            MetricColumn("Signál", "${device.rawRssi} dBm", Modifier.weight(1f))
+            Box(Modifier.width(0.5.dp).height(26.dp).background(Hairline))
+            MetricColumn("Frekvence", String.format("%.1f / s", device.packetsPerSecond), Modifier.weight(1f))
+            Box(Modifier.width(0.5.dp).height(26.dp).background(Hairline))
+            MetricColumn("Paketů", "${device.packetCount}", Modifier.weight(1f))
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
-        // Handheld Geiger vibration toggle + environment calibration
+        // Signal history chart
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Průběh signálu",
+                color = InkSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+            val minVal = device.history.minOrNull()?.roundToInt() ?: device.rawRssi
+            val maxVal = device.history.maxOrNull()?.roundToInt() ?: device.rawRssi
+            Text(
+                text = "$minVal až $maxVal dBm",
+                color = InkTertiary,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        LiveOscilloscope(
+            samples = device.history,
+            accentColor = accent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(84.dp)
+        )
+
+        Spacer(Modifier.height(14.dp))
+        HorizontalDivider(thickness = 0.5.dp, color = Hairline)
+        Spacer(Modifier.height(12.dp))
+
+        // Bottom controls: Haptics + Environment selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (hapticsEnabled) accent.copy(alpha = 0.16f) else CardSurface)
-                    .border(
-                        1.dp,
-                        if (hapticsEnabled) accent else CardBorder,
-                        RoundedCornerShape(12.dp)
-                    )
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (hapticsEnabled) InkPrimary else BgSurface)
                     .clickable(onClick = onToggleHaptics)
                     .padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -264,82 +257,72 @@ fun TargetLockPanel(
                 Icon(
                     imageVector = Icons.Rounded.Vibration,
                     contentDescription = null,
-                    tint = if (hapticsEnabled) accent else TextSecondary,
+                    tint = if (hapticsEnabled) BgElevated else InkSecondary,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = if (hapticsEnabled) "Vibrace ZAP" else "Vibrace VYP",
-                    color = if (hapticsEnabled) accent else TextSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Vibrace",
+                    color = if (hapticsEnabled) BgElevated else InkSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
             Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(BgSurface)
+                    .padding(2.dp)
             ) {
                 EnvironmentProfile.entries.forEach { prof ->
                     val selected = prof == environment
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) CardSurfaceElevated else CardSurface)
-                            .border(
-                                1.dp,
-                                if (selected) accent.copy(alpha = 0.7f) else CardBorder,
-                                RoundedCornerShape(10.dp)
-                            )
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) BgControl else Color.Transparent)
                             .clickable { onSelectEnvironment(prof) }
-                            .padding(vertical = 9.dp),
+                            .padding(vertical = 7.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = when (prof) {
-                                EnvironmentProfile.OPEN_SPACE -> "Volno"
-                                EnvironmentProfile.INDOOR -> "Interiér"
-                                EnvironmentProfile.WALLS -> "Zdi"
-                            },
-                            color = if (selected) TextPrimary else TextMuted,
-                            fontSize = 11.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                            text = prof.shortLabel,
+                            color = if (selected) InkPrimary else InkTertiary,
+                            fontSize = 11.5.sp,
+                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
                         )
                     }
                 }
             }
         }
+
+        Spacer(Modifier.height(6.dp))
     }
 }
 
 @Composable
-private fun MetricMiniTile(
+private fun MetricColumn(
     label: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = label,
-            color = TextMuted,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.6.sp
+            text = value,
+            color = InkPrimary,
+            fontSize = 13.5.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Medium
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            text = value,
-            color = TextPrimary,
-            fontSize = 13.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.SemiBold
+            text = label,
+            color = InkTertiary,
+            fontSize = 11.sp
         )
     }
 }

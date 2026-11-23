@@ -39,10 +39,6 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
-/**
- * Dual-radio real-time BLE + Wi-Fi scanner with sub-millisecond high-frequency telemetry
- * sampling, Kalman filtering, and calibrated Log-Distance estimation in meters.
- */
 class SignalScannerEngine(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

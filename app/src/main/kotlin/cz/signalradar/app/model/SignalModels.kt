@@ -1,7 +1,7 @@
 package cz.signalradar.app.model
 
 enum class SignalType(val label: String) {
-    BLE("BLE"),
+    BLE("Bluetooth"),
     WIFI("Wi-Fi")
 }
 
@@ -12,20 +12,19 @@ enum class SignalFilter(val label: String) {
 }
 
 enum class ViewMode(val label: String) {
-    COMBINED("Radar + Panel"),
+    COMBINED("Přehled"),
     RADAR("Radar"),
-    DASHBOARD("Dashboard")
+    DASHBOARD("Seznam")
 }
 
 enum class EnvironmentProfile(
     val label: String,
     val shortLabel: String,
-    val pathLossExponent: Float,
-    val description: String
+    val pathLossExponent: Float
 ) {
-    OPEN_SPACE("Otevřený prostor", "Volno (n=2.0)", 2.0f, "Přímá viditelnost bez překážek"),
-    INDOOR("Interiér", "Interiér (n=2.5)", 2.5f, "Běžná místnost, nábytek, lehké příčky"),
-    WALLS("Přes zdi", "Zdi (n=3.2)", 3.2f, "Silnější stěny, více překážek")
+    OPEN_SPACE("Venku", "Volno", 2.0f),
+    INDOOR("Interiér", "Interiér", 2.5f),
+    WALLS("Přes zdi", "Zdi", 3.2f)
 }
 
 enum class ProximityBand(val label: String) {
@@ -47,13 +46,13 @@ data class DetectedDevice(
     val txPower: Int?,
     val frequencyMhz: Int?,
     val distanceMeters: Float,
-    val signalQuality: Int, // 0..100
-    val angleDegrees: Float, // 0..360 deterministic radar angle
+    val signalQuality: Int,
+    val angleDegrees: Float,
     val lastSeenNanos: Long,
     val packetCount: Long,
     val packetsPerSecond: Float,
-    val history: List<Float>, // recent filtered RSSI samples
-    val bandLabel: String, // e.g. "2.4 GHz", "5 GHz", "BLE 5"
+    val history: List<Float>,
+    val bandLabel: String,
     val extraInfo: String? = null
 ) {
     val isNamed: Boolean

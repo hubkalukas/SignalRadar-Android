@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import cz.signalradar.app.ui.main.SignalRadarRoute
-import cz.signalradar.app.ui.theme.ObsidianBg
+import cz.signalradar.app.ui.theme.BgPrimary
 import cz.signalradar.app.ui.theme.SignalRadarTheme
 
 class MainActivity : ComponentActivity() {
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
             SignalRadarTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = ObsidianBg
+                    color = BgPrimary
                 ) {
                     SignalRadarRoute()
                 }

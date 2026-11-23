@@ -5,9 +5,6 @@ import cz.signalradar.app.model.SignalType
 import kotlin.math.abs
 import kotlin.math.pow
 
-/**
- * Lightweight 1D Kalman filter tuned for fast yet smooth RSSI tracking in hand-held movement.
- */
 class KalmanRssiFilter(
     private val processNoise: Float = 0.65f,
     private val measurementNoise: Float = 5.5f
@@ -33,11 +30,6 @@ class KalmanRssiFilter(
 
 object SignalMath {
 
-    /**
-     * Estimates distance in meters using the Log-Distance Path Loss Model.
-     *
-     * d = 10 ^ ((TxPower - RSSI) / (10 * n))
-     */
     fun estimateDistanceMeters(
         rssi: Float,
         type: SignalType,
@@ -73,9 +65,6 @@ object SignalMath {
         return rawDistance.coerceIn(0.10f, maxRange)
     }
 
-    /**
-     * Maps RSSI (dBm) to a 0..100 visual signal quality percentage.
-     */
     fun rssiToQualityPercent(rssi: Float): Int {
         val minRssi = -98f
         val maxRssi = -32f
@@ -83,10 +72,6 @@ object SignalMath {
         return (normalized * 100f).toInt()
     }
 
-    /**
-     * Generates a stable, well-distributed azimuth angle (0..360°) for a device MAC/BSSID
-     * so radar blips don't jump randomly while radial distance updates live.
-     */
     fun deterministicAngleDegrees(id: String): Float {
         var hash = 2166136261L
         for (ch in id) {

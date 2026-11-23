@@ -1,5 +1,6 @@
 package cz.signalradar.app.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -24,30 +25,24 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cz.signalradar.app.scanner.SignalMath
-import cz.signalradar.app.ui.theme.AmberSignal
-import cz.signalradar.app.ui.theme.CardBorder
-import cz.signalradar.app.ui.theme.CoralWeak
-import cz.signalradar.app.ui.theme.CyanElectric
-import cz.signalradar.app.ui.theme.EmeraldPulse
-import cz.signalradar.app.ui.theme.TextMuted
-import cz.signalradar.app.ui.theme.TextPrimary
-import cz.signalradar.app.ui.theme.TextSecondary
+import cz.signalradar.app.ui.theme.BgControl
+import cz.signalradar.app.ui.theme.Hairline
+import cz.signalradar.app.ui.theme.InkPrimary
+import cz.signalradar.app.ui.theme.InkSecondary
+import cz.signalradar.app.ui.theme.InkTertiary
 import cz.signalradar.app.ui.theme.signalColorForQuality
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * Compact live sparkline drawn inside every minimalist dashboard card.
- */
 @Composable
 fun SignalSparkline(
     samples: List<Float>,
@@ -70,14 +65,6 @@ fun SignalSparkline(
             val norm = ((rssi - minRssi) / (maxRssi - minRssi).coerceAtLeast(1f)).coerceIn(0f, 1f)
             return h - padY - norm * (h - 2f * padY)
         }
-
-        // Subtle mid reference line
-        drawLine(
-            color = CardBorder.copy(alpha = 0.45f),
-            start = Offset(0f, h * 0.5f),
-            end = Offset(w, h * 0.5f),
-            strokeWidth = 1f
-        )
 
         val points = if (samples.size == 1) listOf(samples.first(), samples.first()) else samples
         val stepX = w / (points.size - 1).coerceAtLeast(1)
@@ -105,63 +92,56 @@ fun SignalSparkline(
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
-                colors = listOf(accentColor.copy(alpha = 0.28f), Color.Transparent),
+                colors = listOf(accentColor.copy(alpha = 0.16f), Color.Transparent),
                 startY = 0f,
                 endY = h
             )
         )
         drawPath(
             path = linePath,
-            color = accentColor,
-            style = Stroke(width = 2.2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            color = accentColor.copy(alpha = 0.9f),
+            style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
-        // Glowing live head dot
         val lastY = yFor(points.last())
         drawCircle(
-            color = accentColor.copy(alpha = 0.28f),
-            radius = 5.dp.toPx(),
-            center = Offset(w, lastY)
-        )
-        drawCircle(
             color = accentColor,
-            radius = 2.4.dp.toPx(),
+            radius = 2.dp.toPx(),
             center = Offset(w, lastY)
         )
     }
 }
 
-/**
- * High-precision analog-digital needle gauge for handheld target lock-on.
- * Shows live distance in meters, dBm, percentage quality, and a spring-damped needle.
- */
 @Composable
 fun AnalogSignalGauge(
     distanceMeters: Float,
     rssi: Float,
     qualityPercent: Int,
     proximityLabel: String,
-    accentColor: Color,
-    sizeDp: Dp = 216.dp,
+    sizeDp: Dp = 212.dp,
     modifier: Modifier = Modifier
 ) {
     val animatedQuality by animateFloatAsState(
         targetValue = qualityPercent.coerceIn(0, 100) / 100f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "gaugeQuality"
     )
 
-    val liveColor = signalColorForQuality(qualityPercent)
+    val activeColor by animateColorAsState(
+        targetValue = signalColorForQuality(qualityPercent),
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "gaugeColor"
+    )
 
     Box(
         modifier = modifier.size(sizeDp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokePx = 12.dp.toPx()
+            val strokePx = 9.dp.toPx()
             val inset = strokePx + 10.dp.toPx()
             val arcSize = Size(size.width - inset * 2f, size.height - inset * 2f)
             val topLeft = Offset(inset, inset)
@@ -171,9 +151,9 @@ fun AnalogSignalGauge(
             val startAngle = 145f
             val sweepTotal = 250f
 
-            // Background track
+            // Quiet neutral track
             drawArc(
-                color = CardBorder.copy(alpha = 0.65f),
+                color = BgControl,
                 startAngle = startAngle,
                 sweepAngle = sweepTotal,
                 useCenter = false,
@@ -182,36 +162,27 @@ fun AnalogSignalGauge(
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
 
-            // Active glowing gradient arc (rotated so sweep starts cleanly at startAngle = 145°)
+            // Single-tone live arc (clean, no rainbow clash)
             val activeSweep = (sweepTotal * animatedQuality).coerceAtLeast(2f)
-            rotate(degrees = startAngle, pivot = center) {
-                drawArc(
-                    brush = Brush.sweepGradient(
-                        0.0f to CoralWeak,
-                        0.22f to AmberSignal,
-                        0.46f to CyanElectric,
-                        0.70f to EmeraldPulse,
-                        1.0f to EmeraldPulse,
-                        center = center
-                    ),
-                    startAngle = 0f,
-                    sweepAngle = activeSweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokePx, cap = StrokeCap.Round)
-                )
-            }
+            drawArc(
+                color = activeColor,
+                startAngle = startAngle,
+                sweepAngle = activeSweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
 
-            // Precision graduation ticks around inner rim
+            // Fine instrument ticks inside the rim
             val tickCount = 24
             for (i in 0..tickCount) {
                 val frac = i / tickCount.toFloat()
                 val deg = startAngle + frac * sweepTotal
                 val rad = deg * (PI / 180.0)
                 val isMajor = i % 6 == 0
-                val outerR = radius - strokePx * 0.78f
-                val innerR = outerR - if (isMajor) 8.dp.toPx() else 4.dp.toPx()
+                val outerR = radius - strokePx * 0.9f
+                val innerR = outerR - if (isMajor) 7.dp.toPx() else 3.5.dp.toPx()
                 val p1 = Offset(
                     center.x + (cos(rad) * innerR).toFloat(),
                     center.y + (sin(rad) * innerR).toFloat()
@@ -221,92 +192,74 @@ fun AnalogSignalGauge(
                     center.y + (sin(rad) * outerR).toFloat()
                 )
                 drawLine(
-                    color = if (frac <= animatedQuality) liveColor.copy(alpha = 0.9f)
-                    else TextMuted.copy(alpha = 0.35f),
+                    color = if (frac <= animatedQuality) InkSecondary.copy(alpha = 0.75f)
+                    else InkTertiary.copy(alpha = 0.32f),
                     start = p1,
                     end = p2,
-                    strokeWidth = if (isMajor) 2.dp.toPx() else 1.dp.toPx(),
+                    strokeWidth = if (isMajor) 1.5.dp.toPx() else 1.dp.toPx(),
                     cap = StrokeCap.Round
                 )
             }
 
-            // Compact precision pointer riding along the arc rim (never overlaps center readout)
+            // Crisp needle cap riding the active endpoint
             val needleDeg = startAngle + animatedQuality * sweepTotal
             val needleRad = needleDeg * (PI / 180.0)
-            val tipR = radius + strokePx * 0.05f
-            val baseR = radius - strokePx * 1.05f
             val tip = Offset(
-                center.x + (cos(needleRad) * tipR).toFloat(),
-                center.y + (sin(needleRad) * tipR).toFloat()
-            )
-            val base = Offset(
-                center.x + (cos(needleRad) * baseR).toFloat(),
-                center.y + (sin(needleRad) * baseR).toFloat()
-            )
-            drawLine(
-                color = Color.White,
-                start = base,
-                end = tip,
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round
+                center.x + (cos(needleRad) * radius).toFloat(),
+                center.y + (sin(needleRad) * radius).toFloat()
             )
             drawCircle(
-                color = liveColor.copy(alpha = 0.48f),
-                radius = 7.dp.toPx(),
+                color = InkPrimary,
+                radius = 5.5.dp.toPx(),
                 center = tip
             )
             drawCircle(
-                color = Color.White,
-                radius = 3.2.dp.toPx(),
+                color = activeColor,
+                radius = 2.6.dp.toPx(),
                 center = tip
             )
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = proximityLabel.uppercase(),
-                color = liveColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp
-            )
-            Spacer(Modifier.height(1.dp))
-            Text(
-                text = SignalMath.formatDistance(distanceMeters),
-                color = TextPrimary,
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-1).sp,
-                style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum")
+                text = proximityLabel,
+                color = activeColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${rssi.roundToInt()} dBm · $qualityPercent%",
-                color = TextSecondary,
-                fontSize = 11.5.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium
+                text = SignalMath.formatDistance(distanceMeters),
+                color = InkPrimary,
+                fontSize = 36.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-1.1).sp,
+                style = TextStyle(fontFeatureSettings = "tnum")
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "${rssi.roundToInt()} dBm · $qualityPercent %",
+                color = InkSecondary,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
             )
         }
     }
 }
 
-/**
- * Full-width real-time RSSI oscilloscope for target inspection.
- */
 @Composable
 fun LiveOscilloscope(
     samples: List<Float>,
     accentColor: Color,
     modifier: Modifier = Modifier
         .fillMaxWidth()
-        .height(112.dp)
+        .height(92.dp)
 ) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val padTop = 10.dp.toPx()
-        val padBottom = 10.dp.toPx()
+        val padTop = 8.dp.toPx()
+        val padBottom = 8.dp.toPx()
         val usableH = (h - padTop - padBottom).coerceAtLeast(1f)
         val rawMin = samples.minOrNull() ?: -85f
         val rawMax = samples.maxOrNull() ?: -45f
@@ -320,24 +273,12 @@ fun LiveOscilloscope(
             return padTop + (1f - norm) * usableH
         }
 
-        // Horizontal reference grid lines
         listOf(0.25f, 0.5f, 0.75f).forEach { frac ->
             val y = padTop + frac * usableH
             drawLine(
-                color = CardBorder.copy(alpha = 0.55f),
+                color = Hairline.copy(alpha = 0.7f),
                 start = Offset(0f, y),
                 end = Offset(w, y),
-                strokeWidth = 1f
-            )
-        }
-
-        // Vertical time grid lines
-        for (i in 1..5) {
-            val x = w * (i / 6f)
-            drawLine(
-                color = CardBorder.copy(alpha = 0.35f),
-                start = Offset(x, 0f),
-                end = Offset(x, h),
                 strokeWidth = 1f
             )
         }
@@ -370,7 +311,7 @@ fun LiveOscilloscope(
         drawPath(
             path = areaPath,
             brush = Brush.verticalGradient(
-                colors = listOf(accentColor.copy(alpha = 0.32f), Color.Transparent),
+                colors = listOf(accentColor.copy(alpha = 0.18f), Color.Transparent),
                 startY = padTop,
                 endY = h
             )
@@ -378,18 +319,13 @@ fun LiveOscilloscope(
         drawPath(
             path = linePath,
             color = accentColor,
-            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
         val lastY = yFor(pts.last())
         drawCircle(
-            color = accentColor.copy(alpha = 0.32f),
-            radius = 8.dp.toPx(),
-            center = Offset(w - 2.dp.toPx(), lastY)
-        )
-        drawCircle(
-            color = Color.White,
-            radius = 3.2.dp.toPx(),
+            color = InkPrimary,
+            radius = 3.dp.toPx(),
             center = Offset(w - 2.dp.toPx(), lastY)
         )
     }

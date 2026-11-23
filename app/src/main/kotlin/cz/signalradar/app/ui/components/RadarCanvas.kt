@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,25 +51,21 @@ import androidx.compose.ui.unit.sp
 import cz.signalradar.app.model.DetectedDevice
 import cz.signalradar.app.model.SignalType
 import cz.signalradar.app.scanner.SignalMath
-import cz.signalradar.app.ui.theme.CardBorder
-import cz.signalradar.app.ui.theme.CardSurface
-import cz.signalradar.app.ui.theme.CyanElectric
-import cz.signalradar.app.ui.theme.DeepSlate
-import cz.signalradar.app.ui.theme.EmeraldPulse
-import cz.signalradar.app.ui.theme.ObsidianBg
-import cz.signalradar.app.ui.theme.TextMuted
-import cz.signalradar.app.ui.theme.TextPrimary
-import cz.signalradar.app.ui.theme.TextSecondary
+import cz.signalradar.app.ui.theme.AccentBlue
+import cz.signalradar.app.ui.theme.AccentGreen
+import cz.signalradar.app.ui.theme.BgControl
+import cz.signalradar.app.ui.theme.BgElevated
+import cz.signalradar.app.ui.theme.Hairline
+import cz.signalradar.app.ui.theme.HairlineStrong
+import cz.signalradar.app.ui.theme.InkPrimary
+import cz.signalradar.app.ui.theme.InkSecondary
+import cz.signalradar.app.ui.theme.InkTertiary
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * Interactive real-time radar displaying BLE (cyan) and Wi-Fi (emerald) targets
- * positioned radially by estimated distance in meters.
- */
 @Composable
 fun SignalRadarScope(
     devices: List<DetectedDevice>,
@@ -83,41 +81,27 @@ fun SignalRadarScope(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2800, easing = LinearEasing),
+            animation = tween(durationMillis = 3200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "sweepAngle"
-    )
-    val pulsePhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulsePhase"
     )
 
     val textMeasurer = rememberTextMeasurer()
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     fun normalizedRadius(distanceMeters: Float): Float {
-        // Sqrt compression gives generous visual space to close-range devices (0.2m - 4m)
         val linear = (distanceMeters / maxRangeMeters).coerceIn(0.02f, 1.0f)
-        return (0.10f + 0.86f * sqrt(linear)).coerceIn(0.10f, 0.96f)
+        return (0.11f + 0.85f * sqrt(linear)).coerceIn(0.11f, 0.96f)
     }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1.06f)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFF0E1A30), DeepSlate, ObsidianBg)
-                )
-            )
-            .border(1.dp, CardBorder, RoundedCornerShape(24.dp))
+            .aspectRatio(1.08f)
+            .clip(RoundedCornerShape(22.dp))
+            .background(BgElevated)
+            .border(0.5.dp, Hairline, RoundedCornerShape(22.dp))
             .onSizeChanged { canvasSize = it }
     ) {
         Canvas(
@@ -152,22 +136,13 @@ fun SignalRadarScope(
             val center = Offset(size.width / 2f, size.height / 2f)
             val maxR = minOf(size.width, size.height) * 0.44f
 
-            // Ambient radar dish glow
+            // Subtle darker dish background
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        CyanElectric.copy(alpha = 0.08f),
-                        CyanElectric.copy(alpha = 0.02f),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = maxR * 1.05f
-                ),
-                radius = maxR * 1.05f,
+                color = Color(0xFF0E0E11),
+                radius = maxR,
                 center = center
             )
 
-            // Concentric distance rings
             val ringDistances = when {
                 maxRangeMeters <= 6f -> listOf(1f, 2.5f, 5f)
                 maxRangeMeters <= 16f -> listOf(2f, 6f, 15f)
@@ -175,111 +150,84 @@ fun SignalRadarScope(
             }
 
             val ringLabelStyle = TextStyle(
-                color = TextMuted.copy(alpha = 0.85f),
-                fontSize = 9.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium
+                color = InkTertiary,
+                fontSize = 9.5.sp,
+                fontFamily = FontFamily.Monospace
             )
 
             ringDistances.forEachIndexed { idx, distM ->
                 val r = normalizedRadius(distM) * maxR
                 val isOuter = idx == ringDistances.lastIndex
                 drawCircle(
-                    color = if (isOuter) CyanElectric.copy(alpha = 0.28f) else CardBorder.copy(alpha = 0.85f),
+                    color = if (isOuter) HairlineStrong else Hairline,
                     radius = r,
                     center = center,
-                    style = Stroke(
-                        width = if (isOuter) 1.4.dp.toPx() else 1.dp.toPx(),
-                        pathEffect = if (!isOuter) PathEffect.dashPathEffect(floatArrayOf(6f, 6f)) else null
-                    )
+                    style = Stroke(width = 1.dp.toPx())
                 )
-                val labelText = if (distM % 1f == 0f) "${distM.toInt()} m" else "${distM} m"
+                val labelText = if (distM % 1f == 0f) "${distM.toInt()} m" else "$distM m"
                 val measured = textMeasurer.measure(labelText, ringLabelStyle)
                 drawText(
                     textLayoutResult = measured,
-                    topLeft = Offset(center.x + 4.dp.toPx(), center.y - r + 2.dp.toPx())
+                    topLeft = Offset(center.x + 5.dp.toPx(), center.y - r + 2.dp.toPx())
                 )
             }
 
-            // Crosshair axes (N/S/E/W + diagonals)
-            val axisColor = CardBorder.copy(alpha = 0.65f)
-            drawLine(axisColor, Offset(center.x - maxR, center.y), Offset(center.x + maxR, center.y), 1f)
-            drawLine(axisColor, Offset(center.x, center.y - maxR), Offset(center.x, center.y + maxR), 1f)
-            val diag = maxR * 0.7071f
-            drawLine(
-                axisColor.copy(alpha = 0.35f),
-                Offset(center.x - diag, center.y - diag),
-                Offset(center.x + diag, center.y + diag),
-                1f
-            )
-            drawLine(
-                axisColor.copy(alpha = 0.35f),
-                Offset(center.x + diag, center.y - diag),
-                Offset(center.x - diag, center.y + diag),
-                1f
-            )
+            // Quiet crosshair lines
+            drawLine(Hairline.copy(alpha = 0.7f), Offset(center.x - maxR, center.y), Offset(center.x + maxR, center.y), 1f)
+            drawLine(Hairline.copy(alpha = 0.7f), Offset(center.x, center.y - maxR), Offset(center.x, center.y + maxR), 1f)
 
-            // Rotating sweep beam with luminous afterglow
+            // Understated monochrome sweep beam
             if (isScanning) {
                 rotate(degrees = sweepAngle, pivot = center) {
                     drawCircle(
                         brush = Brush.sweepGradient(
                             0.0f to Color.Transparent,
-                            0.74f to Color.Transparent,
-                            0.94f to CyanElectric.copy(alpha = 0.14f),
-                            0.995f to CyanElectric.copy(alpha = 0.42f),
+                            0.78f to Color.Transparent,
+                            0.96f to Color.White.copy(alpha = 0.06f),
+                            0.996f to Color.White.copy(alpha = 0.16f),
                             1.0f to Color.Transparent,
                             center = center
                         ),
                         radius = maxR,
                         center = center
                     )
-                    // Leading crisp beam line
                     drawLine(
                         brush = Brush.linearGradient(
-                            colors = listOf(CyanElectric.copy(alpha = 0.15f), CyanElectric),
+                            colors = listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.42f)),
                             start = center,
                             end = Offset(center.x + maxR, center.y)
                         ),
                         start = center,
                         end = Offset(center.x + maxR, center.y),
-                        strokeWidth = 2.dp.toPx(),
+                        strokeWidth = 1.3.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 }
-
-                // Expanding sonar ring from center
-                drawCircle(
-                    color = CyanElectric.copy(alpha = (1f - pulsePhase) * 0.22f),
-                    radius = maxR * (0.06f + pulsePhase * 0.94f),
-                    center = center,
-                    style = Stroke(width = 1.2.dp.toPx())
-                )
             }
 
-            // Center user device marker
+            // Center origin (phone)
             drawCircle(
-                color = CyanElectric.copy(alpha = 0.25f),
-                radius = 9.dp.toPx(),
+                color = InkPrimary.copy(alpha = 0.14f),
+                radius = 7.dp.toPx(),
                 center = center
             )
             drawCircle(
-                color = Color.White,
-                radius = 3.5.dp.toPx(),
+                color = InkPrimary,
+                radius = 3.dp.toPx(),
                 center = center
             )
 
-            // Plot detected BLE & Wi-Fi devices
+            // Targets
             val nowNanos = SystemClock.elapsedRealtimeNanos()
             val visibleDevices = devices.take(32)
             val labelStyle = TextStyle(
-                color = TextPrimary,
-                fontSize = 9.5.sp,
-                fontWeight = FontWeight.SemiBold,
+                color = InkPrimary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
                 fontFeatureSettings = "tnum"
             )
             val distStyle = TextStyle(
-                color = TextSecondary,
+                color = InkSecondary,
                 fontSize = 8.5.sp,
                 fontFamily = FontFamily.Monospace
             )
@@ -292,60 +240,49 @@ fun SignalRadarScope(
                     center.x + (cos(rad) * r).toFloat(),
                     center.y + (sin(rad) * r).toFloat()
                 )
-                val color = if (dev.type == SignalType.BLE) CyanElectric else EmeraldPulse
+                val color = if (dev.type == SignalType.BLE) AccentBlue else AccentGreen
 
                 val ageMs = ((nowNanos - dev.lastSeenNanos) / 1_000_000L).coerceAtLeast(0L)
-                val freshness = (1f - (ageMs / 6000f)).coerceIn(0.35f, 1f)
+                val freshness = (1f - (ageMs / 6000f)).coerceIn(0.4f, 1f)
 
-                // Outer glow halo
-                val haloRadius = if (isSelected) 16.dp.toPx() else (8f + (dev.signalQuality / 25f)).dp.toPx()
-                drawCircle(
-                    color = color.copy(alpha = (if (isSelected) 0.34f else 0.18f) * freshness),
-                    radius = haloRadius,
-                    center = pos
-                )
-
-                // Selected target reticle
                 if (isSelected) {
-                    val reticleR = 13.dp.toPx()
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.9f),
-                        radius = reticleR,
-                        center = pos,
-                        style = Stroke(width = 1.6.dp.toPx())
-                    )
                     drawLine(
-                        color = color.copy(alpha = 0.55f),
+                        color = InkSecondary.copy(alpha = 0.45f),
                         start = center,
                         end = pos,
-                        strokeWidth = 1.2.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
+                        strokeWidth = 1.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                    )
+                    drawCircle(
+                        color = InkPrimary,
+                        radius = 11.dp.toPx(),
+                        center = pos,
+                        style = Stroke(width = 1.3.dp.toPx())
                     )
                 }
 
-                // Core blip dot
                 drawCircle(
-                    color = color.copy(alpha = freshness),
-                    radius = if (isSelected) 5.5.dp.toPx() else 4.2.dp.toPx(),
+                    color = color.copy(alpha = 0.22f * freshness),
+                    radius = if (isSelected) 11.dp.toPx() else 8.dp.toPx(),
                     center = pos
                 )
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.85f * freshness),
-                    radius = if (isSelected) 2.2.dp.toPx() else 1.5.dp.toPx(),
+                    color = color.copy(alpha = freshness),
+                    radius = if (isSelected) 5.dp.toPx() else 4.dp.toPx(),
                     center = pos
                 )
 
-                // Labels for selected device + top 4 closest devices
                 if (isSelected || idx < 4) {
-                    val shortName = if (dev.displayName.length > 13) {
-                        dev.displayName.take(12) + "…"
+                    val shortName = if (dev.displayName.length > 14) {
+                        dev.displayName.take(13) + "…"
                     } else {
                         dev.displayName
                     }
                     val nameLayout = textMeasurer.measure(shortName, labelStyle)
                     val distLayout = textMeasurer.measure(SignalMath.formatDistance(dev.distanceMeters), distStyle)
-                    val labelX = (pos.x + 8.dp.toPx()).coerceAtMost(size.width - maxOf(nameLayout.size.width, distLayout.size.width) - 8.dp.toPx())
-                    val labelY = (pos.y - 12.dp.toPx()).coerceIn(6.dp.toPx(), size.height - 28.dp.toPx())
+                    val maxW = maxOf(nameLayout.size.width, distLayout.size.width)
+                    val labelX = (pos.x + 8.dp.toPx()).coerceAtMost(size.width - maxW - 8.dp.toPx())
+                    val labelY = (pos.y - 11.dp.toPx()).coerceIn(6.dp.toPx(), size.height - 28.dp.toPx())
 
                     drawText(nameLayout, topLeft = Offset(labelX, labelY))
                     drawText(distLayout, topLeft = Offset(labelX, labelY + nameLayout.size.height - 1f))
@@ -353,72 +290,56 @@ fun SignalRadarScope(
             }
         }
 
-        // Top-left legend pill
+        // Top-left minimal legend
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(CardSurface.copy(alpha = 0.82f))
-                .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
-                .padding(horizontal = 9.dp, vertical = 5.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LegendDot(color = CyanElectric, label = "BLE")
-            LegendDot(color = EmeraldPulse, label = "Wi-Fi")
+            LegendItem(color = AccentBlue, label = "BT")
+            LegendItem(color = AccentGreen, label = "Wi-Fi")
         }
 
-        // Top-right range zoom pill (5m / 15m / 35m)
+        // Top-right clean range switch
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(CardSurface.copy(alpha = 0.86f))
-                .border(1.dp, CyanElectric.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(BgControl)
                 .clickable(onClick = onCycleRange)
                 .padding(horizontal = 10.dp, vertical = 5.dp)
         ) {
             Text(
-                text = "DOSAH ${maxRangeMeters.toInt()} m",
-                color = CyanElectric,
-                fontSize = 10.sp,
+                text = "${maxRangeMeters.toInt()} m",
+                color = InkPrimary,
+                fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Medium
             )
         }
-
-        // Bottom-left hint
-        Text(
-            text = "Klepni na bod pro zaměření",
-            color = TextMuted,
-            fontSize = 10.sp,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        )
     }
 }
 
 @Composable
-private fun LegendDot(color: Color, label: String) {
+private fun LegendItem(color: Color, label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Canvas(modifier = Modifier.padding(top = 0.5.dp).fillMaxSize(0f)) {}
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
+                .size(6.dp)
+                .clip(CircleShape)
                 .background(color)
-                .padding(3.5.dp)
         )
         Text(
             text = label,
-            color = TextSecondary,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold
+            color = InkSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }

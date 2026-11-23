@@ -32,7 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,21 +40,18 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radar
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Sensors
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,7 +59,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -84,18 +80,18 @@ import cz.signalradar.app.scanner.SignalMath
 import cz.signalradar.app.ui.components.SignalRadarScope
 import cz.signalradar.app.ui.components.SignalSparkline
 import cz.signalradar.app.ui.components.TargetLockPanel
-import cz.signalradar.app.ui.theme.AmberSignal
-import cz.signalradar.app.ui.theme.CardBorder
-import cz.signalradar.app.ui.theme.CardSurface
-import cz.signalradar.app.ui.theme.CardSurfaceElevated
-import cz.signalradar.app.ui.theme.CyanElectric
-import cz.signalradar.app.ui.theme.DeepSlate
-import cz.signalradar.app.ui.theme.EmeraldPulse
-import cz.signalradar.app.ui.theme.ObsidianBg
+import cz.signalradar.app.ui.theme.AccentAmber
+import cz.signalradar.app.ui.theme.AccentBlue
+import cz.signalradar.app.ui.theme.AccentGreen
+import cz.signalradar.app.ui.theme.BgControl
+import cz.signalradar.app.ui.theme.BgElevated
+import cz.signalradar.app.ui.theme.BgPrimary
+import cz.signalradar.app.ui.theme.BgSurface
+import cz.signalradar.app.ui.theme.Hairline
+import cz.signalradar.app.ui.theme.InkPrimary
+import cz.signalradar.app.ui.theme.InkSecondary
+import cz.signalradar.app.ui.theme.InkTertiary
 import cz.signalradar.app.ui.theme.SignalRadarTheme
-import cz.signalradar.app.ui.theme.TextMuted
-import cz.signalradar.app.ui.theme.TextPrimary
-import cz.signalradar.app.ui.theme.TextSecondary
 import cz.signalradar.app.ui.theme.signalColorForQuality
 import kotlin.math.roundToInt
 
@@ -108,8 +104,8 @@ fun SignalRadarRoute(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
-        val anyLocationOrScan = result.values.any { it } || viewModel.hasPermissions()
-        viewModel.onPermissionsResult(anyLocationOrScan)
+        val granted = result.values.any { it } || viewModel.hasPermissions()
+        viewModel.onPermissionsResult(granted)
     }
 
     LaunchedEffect(Unit) {
@@ -158,11 +154,7 @@ fun SignalRadarScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF09101E), ObsidianBg, Color(0xFF04070D))
-                )
-            )
+            .background(BgPrimary)
     ) {
         Column(
             modifier = Modifier
@@ -170,37 +162,28 @@ fun SignalRadarScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            TopHeaderBar(
-                status = state.status,
+            HeaderBar(
+                state = state,
                 onToggleScan = onToggleScan,
                 onToggleDemo = onToggleDemo,
                 onManualPulse = onManualPulse
             )
 
-            ViewModeSegmentedBar(
+            ViewModeSwitch(
                 selected = state.viewMode,
                 onSelect = onViewModeChange,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            TelemetrySummaryStrip(
-                bleCount = state.bleCount,
-                wifiCount = state.wifiCount,
-                closestMeters = state.closestDistanceMeters,
-                status = state.status,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             if (!state.status.hasPermissions && !state.status.isDemoMode) {
-                PermissionCard(
+                PermissionNotice(
                     onGrant = onRequestPermissions,
                     onTryDemo = onStartDemo,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             } else if (!state.status.statusMessage.isNullOrBlank()) {
-                StatusHintBanner(
+                NoticeStrip(
                     message = state.status.statusMessage,
-                    isDemo = state.status.isDemoMode,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
@@ -211,9 +194,9 @@ fun SignalRadarScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        SearchAndFilterRow(
+                        SearchAndFilters(
                             searchQuery = state.searchQuery,
                             filter = state.filter,
                             namedOnly = state.namedOnly,
@@ -240,13 +223,20 @@ fun SignalRadarScreen(
                             )
                         }
 
-                        // Compact closest-device quick strip under full radar
                         state.devices.firstOrNull()?.let { nearest ->
-                            DeviceSignalCard(
-                                device = nearest,
-                                isSelected = nearest.id == state.selectedDevice?.id,
-                                onClick = { onSelectDevice(nearest) }
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(BgElevated)
+                                    .border(0.5.dp, Hairline, RoundedCornerShape(16.dp))
+                            ) {
+                                DeviceRow(
+                                    device = nearest,
+                                    isSelected = nearest.id == state.selectedDevice?.id,
+                                    onClick = { onSelectDevice(nearest) }
+                                )
+                            }
                             Spacer(Modifier.height(4.dp))
                         }
                     }
@@ -259,9 +249,8 @@ fun SignalRadarScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 4.dp,
-                            bottom = if (state.selectedDevice != null) 28.dp else 20.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            bottom = 24.dp
+                        )
                     ) {
                         if (state.viewMode == ViewMode.COMBINED) {
                             item(key = "radar_scope") {
@@ -273,11 +262,12 @@ fun SignalRadarScreen(
                                     onSelectDevice = { onSelectDevice(it) },
                                     onCycleRange = onCycleRadarRange
                                 )
+                                Spacer(Modifier.height(12.dp))
                             }
                         }
 
                         item(key = "search_filters") {
-                            SearchAndFilterRow(
+                            SearchAndFilters(
                                 searchQuery = state.searchQuery,
                                 filter = state.filter,
                                 namedOnly = state.namedOnly,
@@ -287,49 +277,71 @@ fun SignalRadarScreen(
                                 onToggleNamedOnly = onToggleNamedOnly,
                                 onEnvironmentChange = onEnvironmentChange
                             )
+                            Spacer(Modifier.height(14.dp))
                         }
 
-                        item(key = "section_header") {
+                        item(key = "list_header") {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 2.dp),
+                                    .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "ŽIVÁ ZAŘÍZENÍ (${state.devices.size})",
-                                    color = TextMuted,
-                                    fontSize = 10.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.1.sp
+                                    text = "V okolí (${state.devices.size})",
+                                    color = InkSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Seřazeno od nejbližšího",
-                                    color = TextMuted,
-                                    fontSize = 10.5.sp
+                                    text = "podle vzdálenosti",
+                                    color = InkTertiary,
+                                    fontSize = 12.sp
                                 )
                             }
                         }
 
                         if (state.devices.isEmpty()) {
                             item(key = "empty_state") {
-                                EmptySignalsCard(
+                                EmptyStateCard(
                                     isScanning = state.status.isScanning,
                                     hasQuery = state.searchQuery.isNotBlank() || state.namedOnly,
                                     onTryDemo = onStartDemo
                                 )
                             }
                         } else {
-                            items(
+                            itemsIndexed(
                                 items = state.devices,
-                                key = { it.id }
-                            ) { device ->
-                                DeviceSignalCard(
-                                    device = device,
-                                    isSelected = device.id == state.selectedDevice?.id,
-                                    onClick = { onSelectDevice(device) }
+                                key = { _, item -> item.id }
+                            ) { index, device ->
+                                val isFirst = index == 0
+                                val isLast = index == state.devices.lastIndex
+                                val shape = RoundedCornerShape(
+                                    topStart = if (isFirst) 16.dp else 0.dp,
+                                    topEnd = if (isFirst) 16.dp else 0.dp,
+                                    bottomStart = if (isLast) 16.dp else 0.dp,
+                                    bottomEnd = if (isLast) 16.dp else 0.dp
                                 )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(shape)
+                                        .background(BgElevated)
+                                ) {
+                                    DeviceRow(
+                                        device = device,
+                                        isSelected = device.id == state.selectedDevice?.id,
+                                        onClick = { onSelectDevice(device) }
+                                    )
+                                    if (!isLast) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(start = 60.dp, end = 14.dp),
+                                            thickness = 0.5.dp,
+                                            color = Hairline
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -337,7 +349,6 @@ fun SignalRadarScreen(
             }
         }
 
-        // Handheld Lock-On Overlay Sheet
         AnimatedVisibility(
             visible = state.selectedDevice != null,
             enter = fadeIn(tween(180)) + slideInVertically(tween(240)) { it / 2 },
@@ -348,7 +359,7 @@ fun SignalRadarScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.56f))
+                        .background(Color.Black.copy(alpha = 0.58f))
                         .clickable { onSelectDevice(null) },
                     contentAlignment = Alignment.BottomCenter
                 ) {
@@ -373,18 +384,18 @@ fun SignalRadarScreen(
 }
 
 @Composable
-private fun TopHeaderBar(
-    status: ScannerStatus,
+private fun HeaderBar(
+    state: SignalRadarUiState,
     onToggleScan: () -> Unit,
     onToggleDemo: () -> Unit,
     onManualPulse: () -> Unit
 ) {
-    val pulseAnim = rememberInfiniteTransition(label = "liveDot")
+    val pulseAnim = rememberInfiniteTransition(label = "scanDot")
     val dotAlpha by pulseAnim.animateFloat(
         initialValue = 0.35f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(650),
+            animation = tween(800),
             repeatMode = RepeatMode.Reverse
         ),
         label = "dotAlpha"
@@ -393,135 +404,116 @@ private fun TopHeaderBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 18.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(CyanElectric.copy(alpha = 0.12f))
-                .border(1.dp, CyanElectric.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Radar,
-                contentDescription = "SignalRadar",
-                tint = CyanElectric,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "SignalRadar",
-                color = TextPrimary,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.4).sp
+                color = InkPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-0.5).sp
             )
+            Spacer(Modifier.height(2.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                val liveColor = when {
-                    !status.isScanning -> TextMuted
-                    status.isDemoMode -> AmberSignal
-                    else -> EmeraldPulse
+                val dotColor = when {
+                    !state.status.isScanning -> InkTertiary
+                    state.status.isDemoMode -> AccentAmber
+                    else -> AccentGreen
                 }
                 Box(
                     modifier = Modifier
-                        .size(7.dp)
-                        .alpha(if (status.isScanning) dotAlpha else 0.5f)
+                        .size(6.dp)
+                        .alpha(if (state.status.isScanning) dotAlpha else 0.5f)
                         .clip(CircleShape)
-                        .background(liveColor)
+                        .background(dotColor)
                 )
+                val summary = buildString {
+                    append(
+                        when {
+                            !state.status.isScanning -> "Pozastaveno"
+                            state.status.isDemoMode -> "Ukázka"
+                            else -> "Skenuje"
+                        }
+                    )
+                    if (state.allDeviceCount > 0) {
+                        append(" · ${state.bleCount} BT, ${state.wifiCount} Wi-Fi")
+                    }
+                    state.closestDistanceMeters?.let {
+                        append(" · ${SignalMath.formatDistance(it)}")
+                    }
+                }
                 Text(
-                    text = when {
-                        !status.isScanning -> "POZASTAVENO"
-                        status.isDemoMode -> "DEMO · ${String.format("%.1f", status.sampleIntervalMs)} ms"
-                        else -> "LIVE · ${String.format("%.1f", status.sampleIntervalMs)} ms"
-                    },
-                    color = liveColor,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                    text = summary,
+                    color = InkSecondary,
+                    fontSize = 12.sp,
+                    style = TextStyle(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
-        // Demo / Live quick switch pill
-        Box(
-            modifier = Modifier
-                .height(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (status.isDemoMode) AmberSignal.copy(alpha = 0.16f) else CardSurface)
-                .border(
-                    1.dp,
-                    if (status.isDemoMode) AmberSignal.copy(alpha = 0.7f) else CardBorder,
-                    RoundedCornerShape(10.dp)
+        if (state.status.isDemoMode) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(BgControl)
+                    .clickable(onClick = onToggleDemo)
+                    .padding(horizontal = 9.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Ukázka",
+                    color = AccentAmber,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
                 )
-                .clickable(onClick = onToggleDemo)
-                .padding(horizontal = 11.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (status.isDemoMode) "DEMO" else "LIVE",
-                color = if (status.isDemoMode) AmberSignal else TextSecondary,
-                fontSize = 10.5.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
+            }
+            Spacer(Modifier.width(8.dp))
         }
 
-        Spacer(Modifier.width(8.dp))
-
-        // Manual scan pulse button
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(CardSurface)
-                .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                .clip(CircleShape)
+                .background(BgElevated)
                 .clickable(onClick = onManualPulse),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Rounded.Refresh,
-                contentDescription = "Ruční sken",
-                tint = TextSecondary,
+                contentDescription = "Obnovit",
+                tint = InkSecondary,
                 modifier = Modifier.size(18.dp)
             )
         }
 
         Spacer(Modifier.width(8.dp))
 
-        // Play / Pause scan button
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (status.isScanning) CyanElectric.copy(alpha = 0.16f) else CardSurface)
-                .border(
-                    1.dp,
-                    if (status.isScanning) CyanElectric.copy(alpha = 0.65f) else CardBorder,
-                    RoundedCornerShape(10.dp)
-                )
+                .clip(CircleShape)
+                .background(if (state.status.isScanning) InkPrimary else BgControl)
                 .clickable(onClick = onToggleScan),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if (status.isScanning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = if (status.isScanning) "Pozastavit" else "Spustit",
-                tint = if (status.isScanning) CyanElectric else TextPrimary,
-                modifier = Modifier.size(20.dp)
+                imageVector = if (state.status.isScanning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (state.status.isScanning) "Pozastavit" else "Spustit",
+                tint = if (state.status.isScanning) BgPrimary else InkPrimary,
+                modifier = Modifier.size(19.dp)
             )
         }
     }
 }
 
 @Composable
-private fun ViewModeSegmentedBar(
+private fun ViewModeSwitch(
     selected: ViewMode,
     onSelect: (ViewMode) -> Unit,
     modifier: Modifier = Modifier
@@ -529,35 +521,27 @@ private fun ViewModeSegmentedBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(BgElevated)
             .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         ViewMode.entries.forEach { mode ->
             val isSelected = mode == selected
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(
-                        if (isSelected) CardSurfaceElevated else Color.Transparent
-                    )
-                    .border(
-                        width = if (isSelected) 1.dp else 0.dp,
-                        color = if (isSelected) CyanElectric.copy(alpha = 0.55f) else Color.Transparent,
-                        shape = RoundedCornerShape(11.dp)
-                    )
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (isSelected) BgControl else Color.Transparent)
                     .clickable { onSelect(mode) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 7.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = mode.label,
-                    color = if (isSelected) TextPrimary else TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                    color = if (isSelected) InkPrimary else InkSecondary,
+                    fontSize = 12.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
                 )
             }
         }
@@ -565,80 +549,7 @@ private fun ViewModeSegmentedBar(
 }
 
 @Composable
-private fun TelemetrySummaryStrip(
-    bleCount: Int,
-    wifiCount: Int,
-    closestMeters: Float?,
-    status: ScannerStatus,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        StatPill(
-            label = "BLUETOOTH",
-            value = "$bleCount",
-            accent = CyanElectric,
-            modifier = Modifier.weight(1f)
-        )
-        StatPill(
-            label = "WI-FI",
-            value = "$wifiCount",
-            accent = EmeraldPulse,
-            modifier = Modifier.weight(1f)
-        )
-        StatPill(
-            label = "NEJBLIŽŠÍ",
-            value = closestMeters?.let { SignalMath.formatDistance(it) } ?: "—",
-            accent = if (closestMeters != null && closestMeters < 2f) EmeraldPulse else TextPrimary,
-            modifier = Modifier.weight(1.15f)
-        )
-        StatPill(
-            label = "PAKETŮ",
-            value = formatCompactCount(status.totalPackets),
-            accent = TextSecondary,
-            modifier = Modifier.weight(0.95f)
-        )
-    }
-}
-
-@Composable
-private fun StatPill(
-    label: String,
-    value: String,
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text = label,
-            color = TextMuted,
-            fontSize = 8.5.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.7.sp,
-            maxLines = 1
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = value,
-            color = accent,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            style = TextStyle(fontFeatureSettings = "tnum"),
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun SearchAndFilterRow(
+private fun SearchAndFilters(
     searchQuery: String,
     filter: SignalFilter,
     namedOnly: Boolean,
@@ -649,29 +560,27 @@ private fun SearchAndFilterRow(
     onEnvironmentChange: (EnvironmentProfile) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Manual search field
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(CardSurface)
-                .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(BgElevated)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Rounded.Search,
-                contentDescription = "Vyhledat",
-                tint = TextMuted,
+                contentDescription = "Hledat",
+                tint = InkTertiary,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))
             Box(modifier = Modifier.weight(1f)) {
                 if (searchQuery.isEmpty()) {
                     Text(
-                        text = "Hledat zařízení, výrobce nebo MAC…",
-                        color = TextMuted,
-                        fontSize = 13.sp
+                        text = "Hledat název, výrobce nebo MAC",
+                        color = InkTertiary,
+                        fontSize = 13.5.sp
                     )
                 }
                 BasicTextField(
@@ -679,10 +588,10 @@ private fun SearchAndFilterRow(
                     onValueChange = onSearchChange,
                     singleLine = true,
                     textStyle = TextStyle(
-                        color = TextPrimary,
-                        fontSize = 13.sp
+                        color = InkPrimary,
+                        fontSize = 13.5.sp
                     ),
-                    cursorBrush = SolidColor(CyanElectric),
+                    cursorBrush = SolidColor(InkPrimary),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -690,15 +599,14 @@ private fun SearchAndFilterRow(
                 Icon(
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "Vymazat",
-                    tint = TextSecondary,
+                    tint = InkSecondary,
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(17.dp)
                         .clickable { onSearchChange("") }
                 )
             }
         }
 
-        // Filter & environment pills
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -707,32 +615,22 @@ private fun SearchAndFilterRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SignalFilter.entries.forEach { item ->
-                val selected = item == filter
-                val chipColor = when (item) {
-                    SignalFilter.ALL -> CyanElectric
-                    SignalFilter.BLE -> CyanElectric
-                    SignalFilter.WIFI -> EmeraldPulse
-                }
-                FilterChipPill(
+                FilterPill(
                     label = item.label,
-                    selected = selected,
-                    accent = chipColor,
+                    selected = item == filter,
                     onClick = { onFilterChange(item) }
                 )
             }
 
-            FilterChipPill(
-                label = "Jen s názvem",
+            FilterPill(
+                label = "S názvem",
                 selected = namedOnly,
-                accent = AmberSignal,
                 onClick = onToggleNamedOnly
             )
 
-            // Cycle environment profile chip
-            FilterChipPill(
-                label = environment.shortLabel,
+            FilterPill(
+                label = environment.label,
                 selected = false,
-                accent = CyanElectric,
                 onClick = {
                     val values = EnvironmentProfile.entries
                     val next = values[(values.indexOf(environment) + 1) % values.size]
@@ -744,202 +642,118 @@ private fun SearchAndFilterRow(
 }
 
 @Composable
-private fun FilterChipPill(
+private fun FilterPill(
     label: String,
     selected: Boolean,
-    accent: Color,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) accent.copy(alpha = 0.16f) else CardSurface)
-            .border(
-                1.dp,
-                if (selected) accent.copy(alpha = 0.75f) else CardBorder,
-                RoundedCornerShape(10.dp)
-            )
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) InkPrimary else BgElevated)
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
-            color = if (selected) accent else TextSecondary,
-            fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+            color = if (selected) BgPrimary else InkSecondary,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
         )
     }
 }
 
 @Composable
-private fun DeviceSignalCard(
+private fun DeviceRow(
     device: DetectedDevice,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val typeAccent = if (device.type == SignalType.BLE) CyanElectric else EmeraldPulse
+    val typeColor = if (device.type == SignalType.BLE) AccentBlue else AccentGreen
     val qualityColor = signalColorForQuality(device.signalQuality)
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (isSelected) CardSurfaceElevated else CardSurface)
-            .border(
-                width = if (isSelected) 1.4.dp else 1.dp,
-                color = if (isSelected) typeAccent.copy(alpha = 0.8f) else CardBorder,
-                shape = RoundedCornerShape(18.dp)
-            )
+            .background(if (isSelected) BgSurface else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(typeColor.copy(alpha = 0.13f)),
+            contentAlignment = Alignment.Center
         ) {
-            // Radio badge icon
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(typeAccent.copy(alpha = 0.12f))
-                    .border(1.dp, typeAccent.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (device.type == SignalType.BLE) Icons.Rounded.Bluetooth else Icons.Rounded.Wifi,
-                    contentDescription = device.type.label,
-                    tint = typeAccent,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(Modifier.width(11.dp))
-
-            // Device name & metadata
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = device.displayName,
-                        color = TextPrimary,
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(typeAccent.copy(alpha = 0.13f))
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = device.bandLabel,
-                            color = typeAccent,
-                            fontSize = 9.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = buildString {
-                        if (!device.vendor.isNullOrBlank()) {
-                            append(device.vendor)
-                            append(" · ")
-                        }
-                        append(device.id)
-                    },
-                    color = TextMuted,
-                    fontSize = 10.5.sp,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            // Live mini sparkline
-            SignalSparkline(
-                samples = device.history,
-                accentColor = qualityColor,
-                modifier = Modifier
-                    .width(56.dp)
-                    .height(28.dp)
+            Icon(
+                imageVector = if (device.type == SignalType.BLE) Icons.Rounded.Bluetooth else Icons.Rounded.Wifi,
+                contentDescription = device.type.label,
+                tint = typeColor,
+                modifier = Modifier.size(18.dp)
             )
-
-            Spacer(Modifier.width(10.dp))
-
-            // Distance (meters) & dBm column
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = SignalMath.formatDistance(device.distanceMeters),
-                    color = TextPrimary,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(fontFeatureSettings = "tnum")
-                )
-                Text(
-                    text = "${device.filteredRssi.roundToInt()} dBm",
-                    color = qualityColor,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
 
-        Spacer(Modifier.height(9.dp))
+        Spacer(Modifier.width(12.dp))
 
-        // Sleek signal strength bar + proximity badge
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(DeepSlate)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction = (device.signalQuality / 100f).coerceIn(0.04f, 1f))
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(qualityColor.copy(alpha = 0.6f), qualityColor)
-                            )
-                        )
-                )
-            }
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${device.proximityBand.label} · ${device.signalQuality} %",
-                color = TextSecondary,
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace
+                text = device.displayName,
+                color = InkPrimary,
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Icon(
-                imageVector = Icons.Rounded.MyLocation,
-                contentDescription = "Zaměřit",
-                tint = TextMuted,
-                modifier = Modifier.size(13.dp)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = buildString {
+                    if (!device.vendor.isNullOrBlank()) {
+                        append(device.vendor)
+                        append(" · ")
+                    }
+                    append(device.bandLabel)
+                },
+                color = InkTertiary,
+                fontSize = 11.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        SignalSparkline(
+            samples = device.history,
+            accentColor = qualityColor,
+            modifier = Modifier
+                .width(50.dp)
+                .height(24.dp)
+        )
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = SignalMath.formatDistance(device.distanceMeters),
+                color = InkPrimary,
+                fontSize = 15.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                style = TextStyle(fontFeatureSettings = "tnum")
+            )
+            Text(
+                text = "${device.filteredRssi.roundToInt()} dBm",
+                color = qualityColor,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
             )
         }
     }
 }
 
 @Composable
-private fun PermissionCard(
+private fun PermissionNotice(
     onGrant: () -> Unit,
     onTryDemo: () -> Unit,
     modifier: Modifier = Modifier
@@ -947,85 +761,68 @@ private fun PermissionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(CardSurface)
-            .border(1.dp, CyanElectric.copy(alpha = 0.45f), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(BgElevated)
+            .border(0.5.dp, Hairline, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Sensors,
-                contentDescription = null,
-                tint = CyanElectric,
-                modifier = Modifier.size(22.dp)
-            )
-            Text(
-                text = "Povolit živý radar Bluetooth & Wi-Fi",
-                color = TextPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(Modifier.height(6.dp))
         Text(
-            text = "Android vyžaduje oprávnění pro okolní zařízení a polohu, aby bylo možné nepřetržitě číst sílu signálu (dBm) a odhadovat vzdálenost v metrech.",
-            color = TextSecondary,
-            fontSize = 12.5.sp,
-            lineHeight = 17.sp
+            text = "Přístup k Bluetooth a Wi-Fi",
+            color = InkPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Android potřebuje oprávnění pro okolní zařízení a polohu, jinak systém nevrací sílu signálu.",
+            color = InkSecondary,
+            fontSize = 13.sp,
+            lineHeight = 18.sp
         )
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(
                 onClick = onGrant,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CyanElectric,
-                    contentColor = ObsidianBg
+                    containerColor = InkPrimary,
+                    contentColor = BgPrimary
                 ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f)
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Povolit skenování", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Povolit", fontWeight = FontWeight.Medium, fontSize = 13.sp)
             }
-            OutlinedButton(
-                onClick = onTryDemo,
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
-            ) {
-                Text("Demo", color = TextSecondary, fontSize = 13.sp)
+            TextButton(onClick = onTryDemo) {
+                Text("Zkusit ukázku", color = InkSecondary, fontSize = 13.sp)
             }
         }
     }
 }
 
 @Composable
-private fun StatusHintBanner(
+private fun NoticeStrip(
     message: String,
-    isDemo: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val accent = if (isDemo) AmberSignal else CyanElectric
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(accent.copy(alpha = 0.10f))
-            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 7.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(BgElevated)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
             text = message,
-            color = accent,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.Medium
+            color = InkSecondary,
+            fontSize = 12.sp
         )
     }
 }
 
 @Composable
-private fun EmptySignalsCard(
+private fun EmptyStateCard(
     isScanning: Boolean,
     hasQuery: Boolean,
     onTryDemo: () -> Unit
@@ -1034,60 +831,38 @@ private fun EmptySignalsCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
-            .padding(22.dp),
+            .background(BgElevated)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Radar,
-            contentDescription = null,
-            tint = TextMuted,
-            modifier = Modifier.size(34.dp)
-        )
-        Spacer(Modifier.height(8.dp))
         Text(
             text = when {
-                hasQuery -> "Žádné zařízení neodpovídá filtru"
-                isScanning -> "Naslouchám okolním signálům…"
-                else -> "Skenování je pozastaveno"
+                hasQuery -> "Nic nenalezeno"
+                isScanning -> "Hledám signály v okolí…"
+                else -> "Skenování je pozastavené"
             },
-            color = TextPrimary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
+            color = InkPrimary,
+            fontSize = 14.5.sp,
+            fontWeight = FontWeight.Medium
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = if (hasQuery) {
-                "Zkus upravit vyhledávaný text nebo přepnout filtr."
+                "Zkus jiný výraz nebo vypni filtr."
             } else {
-                "Ujisti se, že máš zapnuté Bluetooth, Wi-Fi a Polohu — nebo vyzkoušej Demo režim."
+                "Zkontroluj zapnuté Bluetooth, Wi-Fi a polohu."
             },
-            color = TextSecondary,
-            fontSize = 12.sp
+            color = InkSecondary,
+            fontSize = 12.5.sp
         )
         if (!hasQuery) {
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onTryDemo,
-                shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, CyanElectric.copy(alpha = 0.5f))
-            ) {
-                Text("Spustit Demo signály", color = CyanElectric, fontSize = 12.sp)
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = onTryDemo) {
+                Text("Zobrazit ukázková data", color = AccentBlue, fontSize = 12.5.sp)
             }
         }
     }
 }
-
-private fun formatCompactCount(count: Long): String = when {
-    count >= 1_000_000L -> String.format("%.1fM", count / 1_000_000f)
-    count >= 1_000L -> String.format("%.1fk", count / 1_000f)
-    else -> count.toString()
-}
-
-// ============================================================================
-// Compose Previews for visual verification
-// ============================================================================
 
 private fun samplePreviewDevices(): List<DetectedDevice> {
     val now = SystemClock.elapsedRealtimeNanos()
@@ -1112,9 +887,28 @@ private fun samplePreviewDevices(): List<DetectedDevice> {
             bandLabel = "BLE"
         ),
         DetectedDevice(
+            id = "24:0A:C4:88:12:EF",
+            displayName = "ESP32-Radar",
+            rawName = "ESP32-Radar",
+            vendor = "Espressif",
+            type = SignalType.BLE,
+            rawRssi = -63,
+            filteredRssi = -62.5f,
+            txPower = -58,
+            frequencyMhz = 2402,
+            distanceMeters = 1.5f,
+            signalQuality = 64,
+            angleDegrees = 225f,
+            lastSeenNanos = now,
+            packetCount = 294,
+            packetsPerSecond = 12.1f,
+            history = listOf(-67f, -66f, -64f, -65f, -63f, -62f, -63f, -61f, -62f),
+            bandLabel = "BLE"
+        ),
+        DetectedDevice(
             id = "50:C7:BF:3A:90:12",
-            displayName = "Domov_5G_Ultra",
-            rawName = "Domov_5G_Ultra",
+            displayName = "Domov_5G",
+            rawName = "Domov_5G",
             vendor = "TP-Link",
             type = SignalType.WIFI,
             rawRssi = -53,
@@ -1131,28 +925,9 @@ private fun samplePreviewDevices(): List<DetectedDevice> {
             bandLabel = "5 GHz"
         ),
         DetectedDevice(
-            id = "24:0A:C4:88:12:EF",
-            displayName = "ESP32-Radar-Lab",
-            rawName = "ESP32-Radar-Lab",
-            vendor = "Espressif (ESP32)",
-            type = SignalType.BLE,
-            rawRssi = -63,
-            filteredRssi = -62.5f,
-            txPower = -58,
-            frequencyMhz = 2402,
-            distanceMeters = 1.5f,
-            signalQuality = 64,
-            angleDegrees = 225f,
-            lastSeenNanos = now,
-            packetCount = 294,
-            packetsPerSecond = 12.1f,
-            history = listOf(-67f, -66f, -64f, -65f, -63f, -62f, -63f, -61f, -62f),
-            bandLabel = "BLE"
-        ),
-        DetectedDevice(
             id = "18:E8:29:71:C2:08",
-            displayName = "Studio_Mesh_6G",
-            rawName = "Studio_Mesh_6G",
+            displayName = "Studio_6G",
+            rawName = "Studio_6G",
             vendor = "Ubiquiti",
             type = SignalType.WIFI,
             rawRssi = -69,
@@ -1171,12 +946,12 @@ private fun samplePreviewDevices(): List<DetectedDevice> {
     )
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 915, name = "Combined Radar + Dashboard")
+@Preview(showBackground = true, widthDp = 412, heightDp = 915, name = "Main Overview")
 @Composable
 fun SignalRadarCombinedPreview() {
     val devices = samplePreviewDevices()
     SignalRadarTheme {
-        Surface(color = ObsidianBg) {
+        Surface(color = BgPrimary) {
             SignalRadarScreen(
                 state = SignalRadarUiState(
                     devices = devices,
@@ -1189,7 +964,6 @@ fun SignalRadarCombinedPreview() {
                         hasPermissions = true,
                         bleActive = true,
                         wifiActive = true,
-                        sampleIntervalMs = 0.5f,
                         totalPackets = 1482
                     ),
                     viewMode = ViewMode.COMBINED
@@ -1212,12 +986,12 @@ fun SignalRadarCombinedPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 915, name = "Handheld Target Lock")
+@Preview(showBackground = true, widthDp = 412, heightDp = 915, name = "Target Lock")
 @Composable
 fun SignalRadarTargetLockPreview() {
     val devices = samplePreviewDevices()
     SignalRadarTheme {
-        Surface(color = ObsidianBg) {
+        Surface(color = BgPrimary) {
             SignalRadarScreen(
                 state = SignalRadarUiState(
                     devices = devices,
@@ -1230,7 +1004,6 @@ fun SignalRadarTargetLockPreview() {
                         hasPermissions = true,
                         bleActive = true,
                         wifiActive = true,
-                        sampleIntervalMs = 0.5f,
                         totalPackets = 1482
                     ),
                     viewMode = ViewMode.COMBINED,
